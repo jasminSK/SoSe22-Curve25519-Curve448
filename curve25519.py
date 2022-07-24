@@ -1,110 +1,110 @@
 """
-Curve25519 is a Montgomery curve defined by:
+Curve25519 is a montgomery curve defined by:
 y**2 = x**3 + A * x**2 + x  mod p
-where p = 2**255-19, A = 486662
+where p = 2**255-19 and A = 486662
 -> y²=(x³+486662x²+x)mod(2²⁵⁵−19)
 """
-A = 486662
 p = 2 ** 255 - 19
-
-# def point_add(first_point, second_point):
-#    """
-#    Point addition on montgomery curve
-#    :return: x and y coordinates of resulting point
-#    """
-#    (x1, y1) = first_point
-#    (x2, y2) = second_point
-#    lambda_val = ((y2 - y1) / (x2 - x1)) % p
-#    x3 = (lambda_val ** 2 - x1 - x2 - A) % p
-#    y3 = ((2 * x1 + x2 + A) * lambda_val - lambda_val ** 3 - y1) % p
-#    return x3, y3
+A24 = 121665
+base_point = 9
 
 
-# def point_double(point):
-#    """
-#    Point doubling on montgomery curve
-#    :return: x and y coordinate of resulting point
-#    """
-#    (x1, y1) = point
-#    lambda_val = ((3 * x1 ** 2) + (2 * A * x1 + 1)) / (2 * y1)
-#    x3 = (lambda_val ** 2 - x1 - x1 - A) % p
-#    y3 = ((2 * x1 + x1 + A) * lambda_val - lambda_val ** 3 - y1) % p
-#    return x3, y3
+def cswap(swap, x_2, x_3):
+    dummy = swap * ((x_2 - x_3) % p)
+    x_2 = x_2 - dummy
+    x_2 %= p
+    x_3 = x_3 + dummy
+    x_3 %= p
+    return x_2, x_3
 
 
-def point_add(point_n, point_m, point_diff):
-    """Given the projection of two points and their difference, return their sum"""
-    (xn, zn) = point_n
-    (xm, zm) = point_m
-    (x_diff, z_diff) = point_diff
-    x = (z_diff << 2) * (xm * xn - zm * zn) ** 2
-    z = (x_diff << 2) * (xm * zn - zm * xn) ** 2
-    return x % p, z % p
+# Based on https://tools.ietf.org/html/rfc7748
+def x25519(k, u):
+    """
+    Start at x=u. Find point k times x-point.
+    Equivalent of calculating u to the power of k.
+    """
+    x_1 = u
+    x_2 = 1
+    z_2 = 0
+    x_3 = u
+    z_3 = 1
+    swap = 0
+
+    for t in reversed(range(255)):
+        k_t = (k >> t) & 1
+        swap ^= k_t
+        x_2, x_3 = cswap(swap, x_2, x_3)
+        z_2, z_3 = cswap(swap, z_2, z_3)
+        swap = k_t
+
+        a = (x_2 + z_2) % p
+        aa = (a * a) % p
+        b = (x_2 - z_2) % p
+        bb = (b * b) % p
+        e = (aa - bb) % p
+        c = (x_3 + z_3) % p
+        d = (x_3 - z_3) % p
+        da = (d * a) % p
+        cb = (c * b) % p
+        x_3 = (((da + cb) % p)**2) % p
+        z_3 = (x_1 * (((da - cb) % p)**2) % p) % p
+        x_2 = (aa * bb) % p
+        z_2 = (e * ((aa + (A24 * e) % p) % p)) % p
+
+    x_2, x_3 = cswap(swap, x_2, x_3)
+    z_2, z_3 = cswap(swap, z_2, z_3)
+
+    return (x_2 * pow(z_2, p - 2, p)) % p
 
 
-def point_double(point_n):
-    """Double a point provided in projective coordinates"""
-    (xn, zn) = point_n
-    xn2 = xn ** 2
-    zn2 = zn ** 2
-    x = (xn2 - zn2) ** 2
-    xzn = xn * zn
-    z = 4 * xzn * (xn2 + A * xzn + zn2)
-    return x % p, z % p
+def decode_little_endian(b):
+    return sum([b[i] << 8*i for i in range(32)])
 
 
-def const_time_swap(a, b, swap):
-    """Swap two values in constant time"""
-    index = int(swap) * 2
-    temp = (a, b, b, a)
-    return temp[index:index+2]
+def decode_scalar_25519(k):
+    """Turn scalar into int value"""
+    k_list = [(b) for b in k]
+    k_list[0] &= 248
+    k_list[31] &= 127
+    k_list[31] |= 64
+    return decode_little_endian(k_list)
 
 
-def raw_curve25519(base, n):
-    """Raise the point base to the power n"""
-    zero = (1, 0)
-    one = (base, 1)
-    mP, m1P = zero, one
-
-    for i in reversed(range(256)):
-        bit = bool(n & (1 << i))
-        mP, m1P = const_time_swap(mP, m1P, bit)
-        mP, m1P = point_double(mP), point_add(mP, m1P, one)
-        mP, m1P = const_time_swap(mP, m1P, bit)
-
-    x, z = mP
-    inv_z = pow(z, p - 2, p)
-    return (x * inv_z) % p
+def decode_u_coordinate(u):
+    """Turn s into int value"""
+    if len(u) != 32:
+        raise ValueError('Invalid Curve25519 scalar (len=%d)' % len(u))
+    t = sum((ord(u[i])) << (8 * i) for i in range(31))
+    t += (((ord(u[31])) & 0x7f) << 248)
+    return t    
 
 
-def unpack_number(s):
-    """Unpack 32 bytes to a 256 bit value"""
-    if len(s) != 32:
-        raise ValueError('Curve25519 values must be 32 bytes')
-    return int.from_bytes(s, "little")
+def pack(n):
+    """Turns value into string"""
+    return ''.join([chr((n >> (8 * i)) & 255) for i in range(32)])
 
 
-def pack_number(n):
-    """Pack a value into 32 bytes"""
-    return n.to_bytes(32, "little")
-
-
-def fix_secret(n):
-    """Mask a value to be an acceptable exponent"""
+def clamp(n):
     n &= ~7
     n &= ~(128 << 8 * 31)
     n |= 64 << 8 * 31
     return n
 
 
-def curve25519(base_point_raw, secret_raw):
-    """Raise the base point to a given power"""
-    base_point = unpack_number(base_point_raw)
-    secret = fix_secret(unpack_number(secret_raw))
-    return pack_number(raw_curve25519(base_point, secret))
+# Return nP
+def multscalar(k, u):
+    """Calculate Shared Key"""
+    # Private key gets decoded value and clamped
+    k = clamp(decode_scalar_25519(k))
+    # Public key of partner gets turned into int value
+    u = decode_u_coordinate(u)
+    return pack(x25519(k, u))
 
 
-def curve25519_base(secret_raw):
-    """Raise the generator point to a given power"""
-    secret = fix_secret(unpack_number(secret_raw))
-    return pack_number(raw_curve25519(9, secret))
+def base_point_mult(k):
+    """Calculate Public Key"""
+    # Private key gets decoded and clamped
+    k = clamp(decode_scalar_25519(k))
+    # Start at x=9 (Base point). Find point n times x-point. Gets turned into bytes.
+    return pack(x25519(k, base_point))
