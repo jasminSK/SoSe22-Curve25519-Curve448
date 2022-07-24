@@ -2,17 +2,18 @@
 import os
 import binascii
 
-P = 2 ** 448 - 2 ** 224 - 1
+p = 2 ** 448 - 2 ** 224 - 1
 A24 = 39081
+base_point = 5
 
 # Defined here https://tools.ietf.org/html/rfc7748
 def cswap(swap, x_2, x_3):
-    dummy = swap * ((x_2 - x_3) % P)
+    dummy = swap * ((x_2 - x_3) % p)
     x_2 = x_2 - dummy
-    x_2 %= P
+    x_2 %= p
     x_3 = x_3 + dummy
-    x_3 %= P
-    return (x_2, x_3)
+    x_3 %= p
+    return x_2, x_3
 
 # Defined here https://tools.ietf.org/html/rfc7748
 def X448(k, u):
@@ -30,49 +31,28 @@ def X448(k, u):
         z_2, z_3 = cswap(swap, z_2, z_3)
         swap = k_t
 
-        A = (x_2 + z_2) % P
-        #A %= P
-
-        AA = A * A
-        AA %= P
-
-        B = x_2 - z_2
-        B %= P
-
-        BB = B * B
-        BB %= P
-
-        E = AA - BB
-        E %= P
-
-        C = x_3 + z_3
-        C %= P
-
-        D = x_3 - z_3
-        D %= P
-
-        DA = D * A
-        DA %= P
-
-        CB = C * B
-        CB %= P
-
-        x_3 = ((DA + CB) % P)**2
-        x_3 %= P
-
-        z_3 = x_1 * (((DA - CB) % P)**2) % P
-        z_3 %= P
-
-        x_2 = AA * BB
-        x_2 %= P
-
-        z_2 = E * ((AA + (A24 * E) % P) % P)
-        z_2 %= P
+        a = (x_2 + z_2) % p
+        aa = (a * a) % p
+        b = (x_2 - z_2) % p
+        bb = (b * b) % p
+        e = (aa - bb) % p
+        c = (x_3 + z_3) % p
+        d = (x_3 - z_3) % p
+        da = (d * a) % p
+        cb = (c * b) % p
+        x_3 = (((da + cb) % p)**2) % p
+        z_3 = (x_1 * (((da - cb) % p)**2) % p) % p
+        x_2 = (aa * bb) % p
+        z_2 = (e * ((aa + (A24 * e) % p) % p)) % p
 
     x_2, x_3 = cswap(swap, x_2, x_3)
     z_2, z_3 = cswap(swap, z_2, z_3)
 
-    return (x_2 * pow(z_2, P - 2, P)) % P
+    return (x_2 * pow(z_2, p - 2, p)) % p
+
+
+def decodeLittleEndian(b):
+    return sum([b[i] << 8*i for i in range(56)])
 
 
 def decodeScalar448(k):
@@ -81,12 +61,8 @@ def decodeScalar448(k):
   k_list[55] |= 128
   return decodeLittleEndian(k_list)
 
-def decodeLittleEndian(b):
-    return sum([b[i] << 8*i for i in range( 56 )])
 
-
-# 
-def unpack2(s):
+def decode_u_coordinate(s):
     if len(s) != 56:
         raise ValueError('Invalid Curve448 scalar (len=%d)' % len(s))
     return sum(ord(s[i]) << (8 * i) for i in range(56))
@@ -104,11 +80,10 @@ def clamp(n):
 # Return nP
 def multscalar(n, p):
     n = clamp(decodeScalar448(n))
-    p = unpack2(p)
+    p = decode_u_coordinate(p)
     return pack(X448(n, p))
 
 # Start at x=5. Find point n times x-point
 def base_point_mult(n):
     n = clamp(decodeScalar448(n))
-    return pack(X448(n, 5))
-
+    return pack(X448(n, base_point))
