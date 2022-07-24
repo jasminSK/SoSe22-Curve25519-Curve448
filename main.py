@@ -1,31 +1,35 @@
-import curve25519
 import os
+import binascii
+import curve25519
 
+"""
+Curve25519 is a montgomery curve defined by: 
+y**2 = x**3 + A * x**2 + x  mod p
+where p = 2**255-19 and A = 486662
+-> y²=(x³+486662x²+x)mod(2²⁵⁵−19)
 
-if __name__ == "__main__":
-    # Doesn't work yet
+Following code shows Diffie-Hellman Key Exchange using Curve25519
+"""
 
-    # Random values for Alice and Bob (secret)
-    a = os.urandom(32)
-    b = os.urandom(32)
+# Random value a and b are created -> Alice and Bobs private keys
+a = os.urandom(32)
+b = os.urandom(32)
 
-    # Private Key Class of Alice and Bob, enables all functionalities for key exchange
-    a_priv = curve25519.X25519PrivateKey(a)
-    b_priv = curve25519.X25519PrivateKey(b)
+# Public keys are created by raising base point to the power of private key
+a_pub = curve25519.curve25519_base(a)
+b_pub = curve25519.curve25519_base(b)
 
-    # Private Keys of Alice and Bob, used to compute shared key
-    a_priv_key = a_priv.public_key()
-    b_priv_key = b_priv.public_key()
+# Shared keys are created by raising private key to the power of public key of partner
+k_ab = curve25519.curve25519(b_pub, a)
+k_ba = curve25519.curve25519(a_pub, b)
 
-    # Public Keys of Alice and Bob, used to compute shared key
-    a_pub_key = a_priv.public_key()
-    b_pub_key = b_priv.public_key()
+# Outputs
+# hexlify to represent the binary numbers in hexadecimal numbers
+print("Bob private:\t", binascii.hexlify(a))
+print("Alice private:\t", binascii.hexlify(b))
 
-    # Key exchange
+print("\nBob public:\t", binascii.hexlify(b_pub))
+print("Alice public:\t", binascii.hexlify(a_pub))
 
-    # Bob and Alice calculate shared key
-    Alice_shared_key = a_priv.exchange(b_pub_key)
-    Bob_shared_key = b_priv.exchange(a_pub_key)
-
-    print(Alice_shared_key)
-    print(Bob_shared_key)
+print("\nBob shared:\t", binascii.hexlify(k_ba))
+print("Alice shared:\t", binascii.hexlify(k_ab))
