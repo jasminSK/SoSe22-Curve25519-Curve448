@@ -9,6 +9,7 @@ A24 = 121665
 base_point = 9
 
 
+# Defined here https://tools.ietf.org/html/rfc7748
 def cswap(swap, x_2, x_3):
     dummy = swap * ((x_2 - x_3) % p)
     x_2 = x_2 - dummy
