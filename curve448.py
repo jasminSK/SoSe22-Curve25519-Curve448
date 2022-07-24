@@ -1,4 +1,3 @@
-# X448
 import os
 import binascii
 
@@ -51,15 +50,15 @@ def X448(k, u):
     return (x_2 * pow(z_2, p - 2, p)) % p
 
 
-def decodeLittleEndian(b):
+def decode_little_endian(b):
     return sum([b[i] << 8*i for i in range(56)])
 
 
-def decodeScalar448(k):
+def decode_scalar448(k):
   k_list = [(b) for b in k]
   k_list[0] &= 252
   k_list[55] |= 128
-  return decodeLittleEndian(k_list)
+  return decode_little_endian(k_list)
 
 
 def decode_u_coordinate(s):
@@ -79,11 +78,11 @@ def clamp(n):
 
 # Return nP
 def multscalar(n, p):
-    n = clamp(decodeScalar448(n))
+    n = clamp(decode_scalar448(n))
     p = decode_u_coordinate(p)
     return pack(X448(n, p))
 
 # Start at x=5. Find point n times x-point
 def base_point_mult(n):
-    n = clamp(decodeScalar448(n))
+    n = clamp(decode_scalar448(n))
     return pack(X448(n, base_point))
