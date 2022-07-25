@@ -113,7 +113,7 @@ class MontgomeryCurve:
 
     def base_point_mult(self, n):
         """Calculate Public Key"""
-        # Private key gets decoded and clamped
+        # Private key gets decoded
         n = self.decode_scalar(n)
         # Start at x=Base point. Find point n times x-point. Gets turned into bytes.
         return self.pack(self.curve(n, self.base_point))
