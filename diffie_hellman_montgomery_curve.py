@@ -72,7 +72,8 @@ class MontgomeryCurve:
     def decode_little_endian(self, b):  # stores bits from lsb to msb
         return sum([b[i] << 8 * i for i in range(self.bytes)])  # u[0] + 256*u[1] + 256^2*u[2] + ... + 256^(n-1)*u[n-1]
 
-    def decode_scalar(self, k):  # tbd: what the function does
+    def decode_scalar(self, k):
+        """Decode scalar"""
         k_list = [(b) for b in k]
 
         if self.bytes == 56:
@@ -85,7 +86,8 @@ class MontgomeryCurve:
             k_list[31] |= 64
         return self.decode_little_endian(k_list)
 
-    def decode_u_coordinate(self, s):
+    def decode_x_coordinate(self, s):
+        """Decode x coordinate"""
         if len(s) != self.bytes:
             raise ValueError('Invalid Curve scalar (len=%d)' % len(s))
 
@@ -97,32 +99,21 @@ class MontgomeryCurve:
             t += (((ord(s[31])) & 0x7f) << 248)
             return t
 
-    def pack(self, n):  # turns value into string
+    def pack(self, n):
         return ''.join([chr((n >> (8 * i)) & 255) for i in range(self.bytes)])
 
-    def clamp(self, n):
-        if self.bytes == 56:
-            n &= ~3  # changes last 2 bits to 0
-            n |= 128 << 8 * 55  # changes first bit to 1
-        if self.bytes == 32:
-            n &= ~7
-            n &= ~(128 << 8 * 31)
-            n |= 64 << 8 * 31
-        return n
-
-    # Return nP
-    def multscalar(self, n, p):  # tbd: maybe align parameters with x25519
+    def multscalar(self, n, p):
         """Calculate Shared Key"""
         # Private key gets decoded value and clamped
-        n = self.clamp(self.decode_scalar(n))
+        n = self.decode_scalar(n)
         # Public key of partner gets turned into int value
-        p = self.decode_u_coordinate(p)
+        p = self.decode_x_coordinate(p)
+        # Return nP
         return self.pack(self.curve(n, p))
 
-    # Start at x=5. Find point n times x-point
     def base_point_mult(self, n):
         """Calculate Public Key"""
         # Private key gets decoded and clamped
-        n = self.clamp(self.decode_scalar(n))
+        n = self.decode_scalar(n)
         # Start at x=Base point. Find point n times x-point. Gets turned into bytes.
         return self.pack(self.curve(n, self.base_point))
