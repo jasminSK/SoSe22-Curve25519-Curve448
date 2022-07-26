@@ -7,10 +7,10 @@ class MontgomeryCurve:
         self.base_point = base_point
 
     @staticmethod
-    def const_time_swap(a, b, swap):
-        """Swap two values in constant time"""
+    def const_time_swap(p_1, p_2, swap):
+        """Swap two points in constant time"""
         index = int(swap) * 2
-        temp = (a, b, b, a)
+        temp = (p_1, p_2, p_2, p_1)
         return temp[index:index + 2]
 
     def point_add(self, point_p, point_q, point_diff_p_q):
