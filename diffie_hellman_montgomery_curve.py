@@ -98,16 +98,12 @@ class MontgomeryCurve:
 
     def multscalar(self, n, p):
         """Calculate Shared Key"""
-        # Private key gets decoded value and clamped
-        n = self.decode_scalar(n)
-        # Public key of partner gets turned into int value
-        p = self.decode_x_coordinate(p)
-        # Return nP
-        return self.pack(self.curve(n, p))
+        n = self.decode_scalar(n)  # Private key gets decoded
+        p = self.decode_x_coordinate(p)  # Public key of partner gets decoded
+        return self.pack(self.curve(n, p))  # Return nP
 
     def base_point_mult(self, n):
         """Calculate Public Key"""
-        # Private key gets decoded
-        n = self.decode_scalar(n)
+        n = self.decode_scalar(n)  # Private key gets decoded
         # Start at x = Base point. Find point n times x-point. Gets turned into bytes.
         return self.pack(self.curve(n, self.base_point))
