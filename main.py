@@ -58,7 +58,7 @@ b = os.urandom(56)
 a_pub = curve_448.base_point_mult(a)
 b_pub = curve_448.base_point_mult(b)
 
-# Shared keys are created by raising private key to the power of public key of partner
+# Shared keys are created by raising public key of partner to the power of private key
 k_ab = curve_448.multscalar(a, b_pub)
 k_ba = curve_448.multscalar(b, a_pub)
 
