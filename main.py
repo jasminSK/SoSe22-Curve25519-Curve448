@@ -43,7 +43,7 @@ print("Alice shared:\t", binascii.hexlify(k_ab.encode()))
 # Setup for curve448
 p = 2 ** 448 - 2 ** 224 - 1  # Prime number
 a = 156326  # A
-bits_2 = 449
+bits_2 = 448
 bytes_2 = 56
 base_point = 5
 
